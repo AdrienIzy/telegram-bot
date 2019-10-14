@@ -23,23 +23,17 @@ import datetime
 from random import randint as rand
 from bs4 import BeautifulSoup
 
-from captureVideo import capt, multicapt
-from convertAVITOMP4 import convertFile
-import ChromeController as ChromeC
-from getter import getHtmlPage, runGetter
 #from resultBot import getResult
 #import minecraftHandler
 import requests
 import re
 
 #songBot
-#captureBot
 #restouBot
-#mineBot
 #dogBot
 #tramBot
 
-modules = ["restouBot", "dogBot", "tramBot"]
+modules = ["poll", "tramBot"]
 
 dev = True
 owner_chat_id = '274609775'
@@ -88,13 +82,6 @@ class Bot:
             print("error on getUserName")
             userName = "Bob"
         return userName
-    
-    def ping(s, bot, update):
-        chatId = int(update.message.chat.id)
-        messageSent = s.sendMessage(bot, chatId, "pong")
-        sl(2)
-        s.sendChatAction(bot, update.message.chat_id, 'typing')
-        messageSent.delete()
         
     def startBot(s):
         updater = Updater(token = s.token)
@@ -108,113 +95,19 @@ class Bot:
         s.dispatcher.add_handler(CallbackQueryHandler(s.callbackHandler))
         if(s.dev == True):
             print("- devFct")
-            pingMessage_handler = CommandHandler('ping', s.ping)
-            s.dispatcher.add_handler(pingMessage_handler)
-        if('songBot' in s.modules):
-            print("- songBot")
-            s.msgInfoRS = None
-            if(s.isMac):
-                s.driver = webdriver.Chrome('/usr/local/bin/chromedriver')
-            else:
-                s.driver = webdriver.Chrome()
-            requestSongCmd = CommandHandler('rs',s.requestSong)
-            s.dispatcher.add_handler(requestSongCmd)
-
-            playerCmd = CommandHandler('cmd', s.commandPlayer)
-            s.dispatcher.add_handler(playerCmd)
-        if('captureBot' in s.modules):
-            print('- captureBot')
-            capturer = CommandHandler('capture', s.captureFct)
-            s.dispatcher.add_handler(capturer)
-        if('restouBot' in s.modules):
-            print('- restouBot')
+        if('tramBot' in s.modules):
+            print('- tramBot')
+            tramHand = CommandHandler('t', s.getTram)
+            s.dispatcher.add_handler(tramHand)
+        if('poll' in s.modules):
+            print('- poll')
             s.isPollOn = False
             s.botMsg = None
             s.msgPoll = None
             poll_handler = CommandHandler('poll', s.poll)
             s.dispatcher.add_handler(poll_handler)
-
-            restou_handler = CommandHandler('ru', s.getMenu)
-            s.dispatcher.add_handler(restou_handler)
-
             stopPoller = CommandHandler('stopPoll', s.stopPoll)
             s.dispatcher.add_handler(stopPoller)
-        if('dogBot' in s.modules):
-            print('- dogBot')
-            dogHand = CommandHandler('dog', s.getDog)
-            s.dispatcher.add_handler(dogHand)
-        if('tramBot' in s.modules):
-            print('- tramBot')
-            tramHand = CommandHandler('t', s.getTram)
-            s.dispatcher.add_handler(tramHand)
-        '''
-        if('resultBot' in s.modules):
-            print('- resultBot')
-            resultHand = CommandHandler('result', s.getResult)
-            s.dispatcher.add_handler(resultHand)
-        '''
-            
-    def sendVideo(s,bot, chatId, fileName):
-        bot.send_video(chat_id=chatId, video=open(fileName+'.mp4', 'rb'), supports_streaming=True)
-
-    def captureFct(s,bot, update):
-        s.sendMessage(bot, s.ownerId, s.getUserName(update)+": launched "+update.message.text)
-        duree=1
-        nbCam = 1
-        try:
-            duree = int(update.message.text.split()[1])
-            cam = int(update.message.text.split()[2])
-            if(duree<0 or duree>10):
-                duree = 1
-        except:
-            print("Exception :",duree)
-            duree=1
-            cam = 0
-        if(cam == 9):
-            (nbCam) = multicapt(duree)
-        else:
-            (width, height, duration) = capt(duree, cam)
-        if(duree>0 and nbCam == 1):
-            fileName = 'outpy'
-            path = os.getcwd()+s.slash
-            convertFile(path,fileName,'.mp4')
-            s.sendVideo(bot, update.message.chat_id, fileName)
-        elif(duree >0):
-            fileName = 'outpy'
-            path = os.getcwd()+s.slash
-            for i in range(nbCam):
-                convertFile(path,fileName+str(i),'.mp4')
-                s.sendVideo(bot, update.message.chat_id, fileName+str(i))
-        else:
-            bot.send_document(chat_id=update.message.chat_id, document = open('capture.jpg','rb'), supports_streaming=True)
-            
-    def requestSong(s, bot, update):
-        s.sendMessage(bot, update.message.chat_id, s.getUserName(update)+': '+update.message.text)
-        url = update.message.text.split()[1]
-        if("http" in url):
-            ChromeC.openChrome(s.driver, url)
-            sl(2)
-            ChromeC.setVolume(s.driver, 1)
-        else:
-            msg = update.message.text.split()[1:]
-            url = "https://www.youtube.com/results?search_query="
-            for i in range(len(msg)):
-                url = url +msg[i]
-                if(i != len(msg)-1):
-                    url = url+'+'
-            html = getHtmlPage(url)
-            with open('file.html','w') as f:
-                for ligne in html:
-                    f.write(str(ligne))
-                f.close()
-            
-            ChromeC.openChrome(s.driver, url)
-            urlSong = ChromeC.getYtbUrl(s.driver)
-            message = urlSong
-            bot.sendMessage(chat_id=update.message.chat_id, text=message)
-            ChromeC.openChrome(s.driver,urlSong)
-            sl(2)
-            ChromeC.setVolume(s.driver, 1)
             
     def build_menu(s, buttons, n_cols, header_buttons=None, footer_buttons=None):
         menu =[buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
@@ -230,38 +123,6 @@ class Bot:
             s.handleCmdRs(bot,update,data)
         else:
             s.handleCmdRestou(bot, update)
-            
-    def handleCmdRs(s, bot,update,cmd):
-        cmd = cmd[3:]
-        vol = int(ChromeC.getVolume(s.driver))
-        if(cmd == "louder"):
-            if(vol<100):
-                vol = vol+10
-            ChromeC.setVolume(s.driver,vol)
-        elif(cmd == "quieter"):
-            if(vol>0):
-                vol = vol-10
-            ChromeC.setVolume(s.driver,vol)
-        elif(cmd == "play"):
-            ChromeC.play(s.driver)
-        elif(cmd == "pause"):
-            ChromeC.pause(s.driver)
-        elif(cmd == "nextVideo"):
-            ChromeC.nextVideo(s.driver)
-            sl(1)
-        elif("fart" in cmd):
-            val = int(cmd[5:])
-            ChromeC.fart(s.driver, val)
-        message = str(vol)+"% :loud_sound:"
-        isPlaying = ChromeC.isPlaying(s.driver)
-        if(isPlaying == True):
-            message = message +' is playing :arrow_forward: '
-        else:
-            message = message +' is paused :black_medium_square:'
-        title = ChromeC.getTitle(s.driver)
-        message = message + '\n'+title
-        s.deleteInfoRS()
-        s.msgInfoRS = s.sendMessage(bot, int(update.callback_query.message.chat.id),message)
         
     def deleteInfoRS(s):
         try:
@@ -289,79 +150,7 @@ class Bot:
             ]
         reply_markup = InlineKeyboardMarkup(s.build_menu(button_list, n_cols=2))
         botMsgCmd = bot.send_message(chat_id=update.message.chat_id,text="Send command for the player", reply_markup=reply_markup)
-
-    def getMenu(s, bot, update):
-        chatID = str(update.message.chat_id)
-        now = datetime.datetime.now()
-        if (1 != 1):  # and now.hour>14):
-            message = "Trop tard, le RESTOU est ferme maintenant !"
-            bot.sendMessage(chat_id = chatID, text=message)
-        
-        elif (now.weekday() > 4):
-            message = "Le RESTOU n'ouvre pas aujourd'hui, profite de ton week-end vindiou"
-            if (now.weekday() == 6):
-                message = message + " mais pense a revenir demain quand meme"
-            s.sendMessage(bot, chatID, message)
-        
-        else:
-            if (rand(0, 8) == 1):
-            #if (1==1):
-                message = ""
-                valRand = rand(0,5)
-                url = "https://api.telegram.org/bot"+s.token+"/sendChatAction?chat_id="+chatID+"&action=UPLOAD_VIDEO_NOTE&timeout=10"
-                s.simple_get(url)
-                #if(1==1):
-                if (valRand < 4):
-                    sl(3)
-                    message = "T'as cru j'etais ton larbin ou quoi ?"
-                    s.sendMessage(bot, chatID,message)
-                    s.simple_get(url)
-                    sl(rand(4,10))
-                    message = "Ca me vener les gens comme ça qui pensent que tout est acquis dans la vie..."
-                    s.sendMessage(bot, chatID,message)
-                    s.simple_get(url)
-                    sl(rand(5,10))
-                    message = "Qui pensent que juste parce qu'ils ont un privilège ou une capacité de compréhension plus grande que les autres, ils sont forcément supérieurs qu'eux et ils méprisent alors tout ceux qui les entourent"
-                    s.sendMessage(bot, chatID,message)
-                    s.simple_get(url)
-                    sl(rand(10,15))
-                    message = "Et le pire n'est pas forcément tout ça, c'est de rester dans l'ignorance fatale la plus incongrue et édifiante que l'on puisse observer jusqu'à ce jour, toute personne de raison saurait se remettre en cause et demander pardon à son prochain, mais la plupart du temps ce n'est pas le cas et rien ne change..."
-                    s.sendMessage(bot, chatID,message)
-                    s.simple_get(url)
-                    sl(rand(15,20))
-                    message = "Non monsieur ! Rien ne change car il y a quelque chose de pourri en ce monde, une peste qui ronge cette terre, rien n'est sacré. Même ceux qui ont besoin de prendre leur retraite subissent un stress économique considérable au cours de cette période de l'Histoire. En particulier ceux qui arrangent des arbustes ne sont plus en sécurité au sein de notre gouvernement..."
-                    s.sendMessage(bot, chatID,message)
-                    s.simple_get(url)
-                    sl(rand(15,30))
-                    message = "Cette réalité, personne dans cet hémicycle ne la découvre. Et certainement pas moi, sauf à penser que tous ceux qui se sont engagés dans l’action publique et politique locale depuis près de 20 ans y seraient insensibles. Durant ces derniers jours, j’ai beaucoup consulté. Des cuistos. Des chefs réputés. Des commis et leurs associations. Des traiteurs, que je veux remercier de leurs contributions. Les responsables de tous les CROUS et groupes restauratifs représentés au RESTOU et je salue ceux qui, sur ces bancs, ont recherché la voie de l’apaisement."
-                    s.sendMessage(bot, chatID,message)
-                else:
-                    message = "Jsp lol"
-                    s.sendMessage(bot, chatID,message)
-            else:
-                message = "Je vais voir ce qu'il y a dans la cuisine... :runner:"
-                s.sendMessage(bot ,chatID, message )
-                message = ":star: Voila le menu du jour :star: \n"
-                runGetter()
-                sl(rand(3, 10) - rand(0, 3))
-                with open("menuDuJour.txt", 'r', encoding='utf-8') as f:
-                    f.readline()
-                    for ligne in f:
-                        message = message + ligne
-                    message = message + "\n Bon appetit ! :older_man:"
-                    s.sendMessage(bot ,chatID, message )
                     
-    def simple_get(s, url):
-        try:
-            with closing(get(url, stream=True)) as resp:
-                if is_good_response(resp):
-                    return resp.content
-                else:
-                    return None
-    
-        except RequestException as e:
-            log_error('Error during requests to {0} : {1}'.format(url, str(e)))
-            return None
     def poll(s, bot, update):
         s.isPollOn = True
         s.clearFile()
@@ -518,16 +307,6 @@ class Bot:
         s.clearFile()
         s.deletePollMessages()
 
-    def getDog(s, bot, update):
-        allowed_extension = ['jpg','jpeg','png']
-        file_extension = ''
-        while file_extension not in allowed_extension:
-            contents = requests.get('https://random.dog/woof.json').json()    
-            url = contents['url']
-            file_extension = re.search("([^.]*)$",url).group(1).lower()
-        chat_id = update.message.chat_id
-        bot.send_photo(chat_id=update.message.chat_id, photo=url)
-
     def getTram(s, bot, update):
         arret="JEAN+MOULIN"
         sens = "ANGERS+ROSERAIE"
@@ -576,36 +355,4 @@ class Bot:
             s.sendMessage(bot, chat_id, 'Jsp, j\'ai 4 projets en même temps frère :neutral_face:')
             print("Exception :", "2")
 
-    '''
-    def getResult(s, bot, update):
-        html = getResult()
-        valLenHtmlOrigin = 3424
-        #print(len(html))
-        soup = BeautifulSoup(html)
-        txt = soup.get_text()
-        print(datetime.datetime.now())
-        print(update.message.chat_id)
-        EG = "748461083"
-        s.sendMessage(bot, EG, 'Bot launched, every 30 minutes reloads')
-        while(len(html) == valLenHtmlOrigin):
-            sl(1*60*30)
-            print(datetime.datetime.now())
-            html = getResult()
-            soup = BeautifulSoup(html)
-            txt = soup.get_text()
-#            s.sendMessage(bot, EG, 'nope')
-            #s.sendMessage(bot, update.message.chat_id, ':x: Pas de résultat encore')
-#            sl(2)
-#            s.sendMessage(bot, update.message.chat_id, txt)
-#        else:
-        s.sendMessage(bot, s.ownerId, ":white_check_mark: Y'a les dates !!")
-        sl(2)
-        s.sendMessage(bot, s.ownerId, txt)
-        s.sendMessage(bot, EG, ":white_check_mark: Y'a les dates !!")
-        sl(2)
-        s.sendMessage(bot, EG, txt)
-    '''
-
 bot = Bot(modules, dev, owner_chat_id, isMac)
-
-
